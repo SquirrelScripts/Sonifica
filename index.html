@@ -633,12 +633,21 @@
     playBtn.classList.add("playing");
   }
 
-  const startSong = () => {
+  // Press to play, press again to stop. A second press right after starting is a toddler
+  // double-tap, not a request to stop, so it's ignored.
+  let songStarted = -Infinity;
+  const toggleSong = () => {
     feedback(playBtn);
-    playSong();
+    const now = performance.now();
+    if (!songTimers.length) {
+      songStarted = now;
+      playSong();
+    } else if (now - songStarted > 400) {
+      stopSong();
+    }
   };
-  playBtn.addEventListener("pointerdown", startSong);
-  playBtn.addEventListener("click", onKey(startSong));
+  playBtn.addEventListener("pointerdown", toggleSong);
+  playBtn.addEventListener("click", onKey(toggleSong));
 
   // ---------- sound ----------
   // All synthesized with Web Audio, so there are no files to load.

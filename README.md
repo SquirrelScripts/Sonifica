@@ -5,7 +5,7 @@ Big, bright sound pads for a two-year-old. Colorifica's musical sibling: no word
 - **Ten singing pads** in Colorifica's ten paint colors. Each color plays the same note it plays in Colorifica, so red always sounds like red. The notes are a pentatonic scale, so any order of taps sounds like a tune.
 - **Slide a finger** across the pads for a run of notes. Multi-touch works, so several fingers (or a whole palm) play at once; a palm on one pad counts as one note.
 - **Instruments** (top in portrait, right in landscape): bells, drums, and animals (cow, bee, chick, frog, duck, owl, sheep, pig, dog, cat). Picking one plays a quick demo on the pads.
-- **Play button:** sings back the child's last little tune on the current instrument, lighting each pad as it goes. Before they've played anything, it plays "Mary Had a Little Lamb."
+- **Play button:** sings back the child's last little tune on the current instrument, lighting each pad as it goes. Before they've played anything, it plays "Mary Had a Little Lamb." Press it again to stop.
 - **Hit animations:** every pad has a face that opens its mouth and squints happily when it sings. Bells swing and throw notes and sparkles, drums squash and splash paint drops, and animals hop and send a tiny copy of themselves floating up.
 - **Laptop keyboards** work too: mashing keys plays pads.
 - Use the device volume to turn it down or off. A built-in limiter keeps a whole palm of pads from getting loud.
