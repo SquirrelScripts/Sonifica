@@ -1,0 +1,15 @@
+{
+  "name": "Sonifica",
+  "short_name": "Sonifica",
+  "description": "Big, bright sound pads for little hands.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#1d2b4a",
+  "theme_color": "#1d2b4a",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
