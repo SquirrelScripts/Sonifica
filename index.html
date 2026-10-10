@@ -315,6 +315,7 @@
     pad.className = "pad";
     pad.dataset.i = i;
     pad.dataset.shape = shape;
+    pad.dataset.critter = critter;
     pad.setAttribute("aria-label", name + " " + shape);
     pad.style.setProperty("--c", color);
     pad.style.setProperty("--wiggle", (5 + Math.random() * 5).toFixed(2) + "s");
@@ -447,7 +448,7 @@
       }
     },
     animals(x, y, i) {
-      fling(x, y, { text: PADS[i][2], kind: "critter-copy", dx: rand(80), dy: -110 - Math.random() * 60, spin: rand(50), life: 1000 });
+      fling(x, y, { text: pads[i].dataset.critter, kind: "critter-copy", dx: rand(80), dy: -110 - Math.random() * 60, spin: rand(50), life: 1000 });
       fling(x, y, { text: "♪", dx: rand(90), dy: -60 - Math.random() * 50, spin: rand(60), life: 800 });
     },
   };
