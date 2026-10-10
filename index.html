@@ -1,34 +1,945 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Sonifica</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <header class="topbar" role="banner">
-      <h1>Sonifica</h1>
-      <div class="controls" role="group" aria-label="Sound palette">
-        <button class="palette-btn active" data-palette="bells">Bells</button>
-        <button class="palette-btn" data-palette="drums">Drums</button>
-        <button class="palette-btn" data-palette="animals">Animals</button>
-      </div>
-      <button id="muteBtn" aria-pressed="false" class="mute-btn">🔊 Sound On</button>
-    </header>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Sonifica</title>
+<meta name="description" content="Big, bright sound pads for little hands.">
+<meta name="theme-color" content="#1d2b4a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sonifica">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  /* Toy band: navy frame, ten singing paint-color pads, chunky instrument buttons on one side. */
+  :root {
+    --frame: #1d2b4a;
+    --tray: #263a63;
+    --pad: #f4f6fb;
+    --ink: #1d2b4a;
+    --ring: #ffd23f;
+    --gap: clamp(8px, 1.6vmin, 14px);
+    --tray-pad: clamp(6px, 1.2vmin, 12px);
+    --lip: clamp(5px, 1.2vmin, 10px);
+    --tool-count: 4;
+    color-scheme: dark;
+  }
 
-    <main>
-      <section class="pad-grid" aria-label="Sound pads">
-        <button class="pad pad-1" data-pad="0" aria-label="Pad 1"></button>
-        <button class="pad pad-2" data-pad="1" aria-label="Pad 2"></button>
-        <button class="pad pad-3" data-pad="2" aria-label="Pad 3"></button>
-        <button class="pad pad-4" data-pad="3" aria-label="Pad 4"></button>
-        <button class="pad pad-5" data-pad="4" aria-label="Pad 5"></button>
-        <button class="pad pad-6" data-pad="5" aria-label="Pad 6"></button>
-      </section>
-      <p class="hint">Tap and slide your fingers across the colors ✨</p>
-    </main>
+  *, *::before, *::after { box-sizing: border-box; }
 
-    <script src="app.js"></script>
-  </body>
+  html {
+    height: 100%;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--frame);
+    overscroll-behavior: none;
+  }
+
+  * {
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: var(--frame);
+    container-type: size;
+    display: grid;
+    gap: var(--gap);
+    padding-block: var(--gap);
+    padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+  }
+
+  /* ---------- layout ---------- */
+  @media (orientation: landscape) {
+    body {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-rows: minmax(0, 1fr);
+      grid-template-areas: "pads tools";
+      --btn: clamp(40px, calc((100cqh - (var(--tool-count) - 1) * var(--gap) - 2 * var(--tray-pad)) / var(--tool-count)), 88px);
+    }
+    .pads  { grid-template: repeat(2, minmax(0, 1fr)) / repeat(5, minmax(0, 1fr)); }
+    .tools { grid-template-columns: var(--btn); align-self: center; }
+  }
+
+  @media (orientation: portrait) {
+    body {
+      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-areas: "tools" "pads";
+      --btn: clamp(40px, calc((100cqw - (var(--tool-count) - 1) * var(--gap) - 2 * var(--tray-pad)) / var(--tool-count)), 88px);
+    }
+    .pads  { grid-template: repeat(5, minmax(0, 1fr)) / repeat(2, minmax(0, 1fr)); }
+    .tools { grid-template-columns: repeat(var(--tool-count), var(--btn)); justify-self: center; }
+  }
+
+  .tray {
+    display: grid;
+    gap: var(--gap);
+    padding: var(--tray-pad);
+    background: var(--tray);
+    border-radius: calc(var(--btn) * 0.36);
+  }
+  .tools { grid-area: tools; }
+  .pads  { grid-area: pads; display: grid; gap: var(--gap); }
+
+  /* ---------- pads ---------- */
+  .pad {
+    position: relative;
+    overflow: hidden;
+    container-type: size;
+    appearance: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border-radius: clamp(16px, 3.4vmin, 32px);
+    background: var(--c);
+    box-shadow: inset 0 calc(-1 * var(--lip)) 0 rgba(0, 0, 0, 0.18), 0 0 0 2px rgba(255, 255, 255, 0.14);
+    cursor: pointer;
+  }
+  .pad > * { pointer-events: none; }
+  .pad::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: #ffffff;
+    opacity: 0;
+    transition: opacity 90ms ease;
+  }
+  .pad.down::after { opacity: 0.2; }
+  .pad:focus-visible { outline: 4px dashed var(--ring); outline-offset: 3px; }
+
+  /* Each pad is a little singer: blinking eyes, and a smile that opens into an "O". */
+  .face { position: relative; width: 56cqmin; height: 40cqmin; }
+  .eye {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 16cqmin;
+    height: 16cqmin;
+    border-radius: 50%;
+    background: #ffffff;
+    animation: blink var(--blink, 6s) var(--blink-delay, 0s) infinite;
+  }
+  .eye + .eye { left: auto; right: 0; }
+  .eye::after {
+    content: "";
+    position: absolute;
+    left: 26%;
+    top: 34%;
+    width: 48%;
+    height: 48%;
+    border-radius: 50%;
+    background: var(--ink);
+  }
+  @keyframes blink {
+    0%, 95%, 100% { transform: none; }
+    97% { transform: scaleY(0.1); }
+  }
+  .mouth {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: 22cqmin;
+    height: 11cqmin;
+    margin-left: -11cqmin;
+    border-radius: 0 0 11cqmin 11cqmin;
+    background: var(--mouth, rgba(29, 43, 74, 0.8));
+  }
+  .pad.down .mouth,
+  .pad.sing .mouth {
+    width: 15cqmin;
+    height: 17cqmin;
+    margin-left: -7.5cqmin;
+    border-radius: 50%;
+  }
+  /* While singing, the eyes squeeze into happy arcs. */
+  .pad.down .eye,
+  .pad.sing .eye {
+    background: transparent;
+    border: 3.6cqmin solid;
+    border-color: #ffffff #ffffff transparent transparent;
+    transform: rotate(-45deg);
+    animation: none;
+  }
+  .pad.down .eye::after,
+  .pad.sing .eye::after { display: none; }
+
+  /* Bells swing from the top, drums squash into the bottom. */
+  .pads[data-instrument="bells"] .pad { transform-origin: 50% 0; }
+  .pads[data-instrument="drums"] .pad { transform-origin: 50% 100%; }
+
+  .critter {
+    display: none;
+    font: 54cqmin/1 "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  }
+  .pads[data-instrument="animals"] .face { display: none; }
+  .pads[data-instrument="animals"] .critter { display: block; }
+
+  .ripple {
+    position: absolute;
+    width: 50cqmin;
+    height: 50cqmin;
+    margin: -25cqmin 0 0 -25cqmin;
+    border-radius: 50%;
+    border: 3cqmin solid rgba(255, 255, 255, 0.75);
+    opacity: 0;
+  }
+
+  .effects { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .fling { position: absolute; opacity: 0; }
+  .fling.note {
+    font: 700 clamp(20px, 4.5vmin, 40px)/1 system-ui, sans-serif;
+    color: #ffffff;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+  }
+  .fling.critter-copy {
+    font: clamp(26px, 6vmin, 54px)/1 "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  }
+
+  /* ---------- instrument buttons ---------- */
+  .tool {
+    position: relative;
+    --pressed-scale: 1;
+    appearance: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    width: var(--btn);
+    height: var(--btn);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    border-radius: 24%;
+    background: var(--pad);
+    box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.12);
+    transition: transform 120ms ease, box-shadow 120ms ease;
+  }
+  .tool:active { transform: scale(0.9); }
+  .tool[aria-pressed="true"],
+  .tool.playing {
+    --pressed-scale: 1.06;
+    transform: scale(1.06);
+    box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.12), 0 0 0 calc(var(--btn) * 0.08) var(--ring);
+  }
+  .tool[aria-pressed="true"]:active { transform: scale(0.96); }
+  .tool.tapped { animation: button-pulse 240ms ease-out; }
+  .tool::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 0 clamp(8px, 2vmin, 18px) 2px var(--ring),
+      0 0 clamp(8px, 2vmin, 18px) 2px var(--pad);
+    opacity: 0;
+  }
+  .tool:active::after { opacity: 0.35; }
+  .tool.tapped::after { animation: button-glow 280ms ease-out; }
+  @keyframes button-pulse {
+    from { transform: scale(0.96); }
+    45% { transform: scale(1.1); }
+    to { transform: scale(var(--pressed-scale)); }
+  }
+  @keyframes button-glow { from { opacity: 0.5; } to { opacity: 0; } }
+  .tool:focus-visible { outline: 4px dashed var(--ring); outline-offset: 4px; }
+  .tool svg { width: 70%; height: 70%; position: relative; }
+  .tool.playing svg { animation: bob 300ms ease-in-out infinite alternate; }
+  @keyframes bob { to { transform: scale(1.12); } }
+
+  :root[data-effects="off"] .tool,
+  :root[data-effects="off"] .tool::after,
+  :root[data-effects="off"] .tool svg,
+  :root[data-effects="off"] .eye { transition: none; animation: none; }
+  :root[data-effects="off"] .effects,
+  :root[data-effects="off"] .tool::after { display: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .tool, .tool.tapped, .tool::after, .tool.tapped::after, .tool svg, .eye { transition: none; animation: none; }
+    .effects { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="pads" id="pads" data-instrument="bells" role="group" aria-label="Sound pads"></div>
+
+  <div class="tray tools" role="toolbar" aria-label="Instruments">
+    <button class="tool" data-instrument="bells" aria-label="Bells" aria-pressed="true">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="9" r="5" fill="#fb8c00"/>
+        <path d="M32 12c-10 0-16 8-16 19v8l-6 9h44l-6-9v-8c0-11-6-19-16-19z" fill="#fdd835"/>
+        <path d="M10 48h44" stroke="#fb8c00" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="32" cy="55" r="6" fill="#fb8c00"/>
+        <path d="M24 23c-2 3-3 7-3 11" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+      </svg>
+    </button>
+    <button class="tool" data-instrument="drums" aria-label="Drums" aria-pressed="false">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M8 30v18c0 5 10.7 9 24 9s24-4 24-9V30" fill="#e53935"/>
+        <path d="M8 35l8 14 8-14 8 14 8-14 8 14 8-14" fill="none" stroke="#ffd23f" stroke-width="3.5" stroke-linejoin="round"/>
+        <ellipse cx="32" cy="30" rx="24" ry="9" fill="#ffffff" stroke="#c62828" stroke-width="3"/>
+        <path d="M17 5l13 21M47 5L34 26" stroke="#8d5a3b" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <button class="tool" data-instrument="animals" aria-label="Animals" aria-pressed="false">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M28 15c-3-6 1-10 6-9-3 2-3 5-2 8" fill="#fdd835"/>
+        <circle cx="29" cy="36" r="22" fill="#fdd835"/>
+        <path d="M49 33l11 5-11 5z" fill="#fb8c00" stroke="#fb8c00" stroke-width="3" stroke-linejoin="round"/>
+        <circle cx="39" cy="29" r="3.6" fill="#1d2b4a"/>
+        <path d="M14 39c4 7 13 8 17 2" fill="none" stroke="#f9a825" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <button class="tool" id="play" aria-label="Play my song">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M22 13v38l30-19z" fill="#43a047" stroke="#43a047" stroke-width="6" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="effects" id="effects" aria-hidden="true"></div>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const padsEl = document.getElementById("pads");
+  const effects = document.getElementById("effects");
+  const playBtn = document.getElementById("play");
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const lowCapability = (navigator.deviceMemory && navigator.deviceMemory <= 2) ||
+    (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2);
+
+  // Colorifica's paint colors, in the same order, so each color plays the same note in both apps.
+  const PADS = [
+    ["#e53935", "Red", "🐮"],
+    ["#fb8c00", "Orange", "🐝"],
+    ["#fdd835", "Yellow", "🐥"],
+    ["#43a047", "Green", "🐸"],
+    ["#29b6f6", "Light blue", "🦆"],
+    ["#1e63e9", "Blue", "🦉"],
+    ["#8e44d9", "Purple", "🐑"],
+    ["#ff5fa2", "Pink", "🐷"],
+    ["#8d5a3b", "Brown", "🐶"],
+    ["#222222", "Black", "🐱"],
+  ];
+
+  const pads = PADS.map(([color, name, critter], i) => {
+    const pad = document.createElement("button");
+    pad.className = "pad";
+    pad.dataset.i = i;
+    pad.setAttribute("aria-label", name);
+    pad.style.setProperty("--c", color);
+    pad.style.setProperty("--blink", (4 + Math.random() * 4).toFixed(2) + "s");
+    pad.style.setProperty("--blink-delay", (-Math.random() * 8).toFixed(2) + "s");
+    if (color === "#222222") pad.style.setProperty("--mouth", "rgba(255, 255, 255, 0.85)");
+    pad.innerHTML = '<span class="face" aria-hidden="true"><span class="eye"></span><span class="eye"></span>' +
+      '<span class="mouth"></span></span><span class="critter" aria-hidden="true">' + critter + "</span>";
+    padsEl.appendChild(pad);
+    return pad;
+  });
+
+  // Optional accessories; data attributes allow opt-outs without adding toddler-facing controls.
+  function motionEnabled() {
+    return !reducedMotion.matches && root.dataset.effects !== "off";
+  }
+
+  function buzz(ms) {
+    if (reducedMotion.matches || root.dataset.haptics === "off") return;
+    try {
+      if (navigator.vibrate) navigator.vibrate(ms);
+    } catch (_) { /* vibration may be unavailable or blocked */ }
+  }
+
+  // ---------- hit animations ----------
+  const rand = (n) => (Math.random() - 0.5) * n;
+
+  function ripple(pad, x, y) {
+    if (pad.childElementCount > 6) return;
+    const r = document.createElement("span");
+    r.className = "ripple";
+    r.style.left = x + "px";
+    r.style.top = y + "px";
+    pad.appendChild(r);
+    r.animate([
+      { opacity: 0.9, transform: "scale(0.2)" },
+      { opacity: 0, transform: "scale(2.4)" },
+    ], { duration: 520, easing: "ease-out" }).onfinish = () => r.remove();
+    setTimeout(() => r.remove(), 700);
+  }
+
+  // Throws one little thing (a note, a sparkle, a paint drop, a tiny animal) out from a point.
+  function fling(x, y, { text, kind = "note", color = "#ffffff", size = 10, round = false,
+    dx = 0, dy = -100, spin = 0, life = 800 }) {
+    if (lowCapability || root.dataset.particles === "off" || effects.childElementCount >= 40) return;
+    const p = document.createElement("span");
+    p.className = "fling " + (text ? kind : "spark");
+    if (text) {
+      p.textContent = text;
+    } else {
+      p.style.width = p.style.height = size + "px";
+      p.style.background = color;
+      p.style.borderRadius = round ? "50%" : "2px";
+    }
+    p.style.left = x + "px";
+    p.style.top = y + "px";
+    effects.appendChild(p);
+    p.animate([
+      { opacity: 0, transform: "translate(-50%, -50%) translate(0px, 0px) rotate(0deg) scale(0.5)" },
+      { opacity: 1, offset: 0.15 },
+      { opacity: 0, transform: "translate(-50%, -50%) translate(" + dx + "px, " + dy + "px) rotate(" + spin + "deg) scale(1.1)" },
+    ], { duration: life, easing: "ease-out" }).onfinish = () => p.remove();
+    setTimeout(() => p.remove(), life + 200);
+  }
+
+  const popFace = (pad) => pad.querySelector(".face").animate([
+    { transform: "none" },
+    { transform: "translateY(-10%) scale(1.08)", offset: 0.3 },
+    { transform: "none" },
+  ], { duration: 380, easing: "ease-out" });
+
+  // How a pad moves when it's hit: bells swing, drums squash, animals hop.
+  const MOVES = {
+    bells(pad) {
+      pad.animate([
+        { transform: "scale(0.94)" },
+        { transform: "rotate(-5deg) scale(1.04)", offset: 0.2 },
+        { transform: "rotate(4deg)", offset: 0.45 },
+        { transform: "rotate(-2deg)", offset: 0.7 },
+        { transform: "none" },
+      ], { duration: 640, easing: "ease-out" });
+      popFace(pad);
+    },
+    drums(pad) {
+      pad.animate([
+        { transform: "scale(1.08, 0.84)" },
+        { transform: "scale(0.96, 1.06)", offset: 0.35 },
+        { transform: "scale(1.02, 0.98)", offset: 0.65 },
+        { transform: "none" },
+      ], { duration: 340, easing: "ease-out" });
+      popFace(pad);
+    },
+    animals(pad) {
+      pad.animate([{ transform: "scale(0.95)" }, { transform: "none" }], { duration: 200, easing: "ease-out" });
+      pad.querySelector(".critter").animate([
+        { transform: "none" },
+        { transform: "translateY(-30%) rotate(-10deg) scale(1.1)", offset: 0.35 },
+        { transform: "translateY(0) scale(1.18, 0.84)", offset: 0.62 },
+        { transform: "rotate(6deg)", offset: 0.8 },
+        { transform: "none" },
+      ], { duration: 560, easing: "ease-out" });
+    },
+  };
+
+  // What flies out of a pad: notes and sparkles, a splash of drops, or a tiny copy of the animal.
+  const BURSTS = {
+    bells(x, y) {
+      fling(x, y, { text: Math.random() < 0.5 ? "♪" : "♫", dx: rand(70), dy: -80 - Math.random() * 80, spin: rand(60), life: 950 });
+      for (let k = 0; k < 4; k++) {
+        fling(x, y, { color: k % 2 ? "#ffffff" : "#ffd23f", size: 9, dx: rand(160), dy: rand(160), spin: 180, life: 650 });
+      }
+    },
+    drums(x, y) {
+      for (let k = 0; k < 8; k++) {
+        const a = k * Math.PI / 4 + Math.random() * 0.5;
+        const r = 55 + Math.random() * 55;
+        fling(x, y, { color: k % 2 ? "#ffffff" : "#ffd23f", size: 11, round: true,
+          dx: Math.cos(a) * r, dy: Math.sin(a) * r, life: 460 });
+      }
+    },
+    animals(x, y, i) {
+      fling(x, y, { text: PADS[i][2], kind: "critter-copy", dx: rand(80), dy: -110 - Math.random() * 60, spin: rand(50), life: 1000 });
+      fling(x, y, { text: "♪", dx: rand(90), dy: -60 - Math.random() * 50, spin: rand(60), life: 800 });
+    },
+  };
+
+  // ---------- playing ----------
+  let instrument = "bells";
+  const lastHit = PADS.map(() => -Infinity);
+
+  function hit(i, { x, y, tap = false, echo = false } = {}) {
+    const now = performance.now();
+    if (now - lastHit[i] < 60) return; // a whole palm on one pad is one note, not five
+    lastHit[i] = now;
+    sound(instrument, i);
+    if (!echo) remember(i, now);
+    if (tap) buzz(8);
+
+    const pad = pads[i];
+    pad.classList.add("sing");
+    clearTimeout(pad.singTimer);
+    pad.singTimer = setTimeout(() => pad.classList.remove("sing"), 320);
+    if (!motionEnabled()) return;
+
+    const rect = pad.getBoundingClientRect();
+    const px = x === undefined ? rect.left + rect.width / 2 : x;
+    const py = y === undefined ? rect.top + rect.height / 2 : y;
+    MOVES[instrument](pad);
+    ripple(pad, px - rect.left, py - rect.top);
+    BURSTS[instrument](px, py, i);
+  }
+
+  // Fingers can glide from pad to pad, so each one is followed across the whole grid.
+  const fingers = new Map(); // pointerId -> index of the pad under it, or -1
+  const held = PADS.map(() => 0);
+
+  function press(i, delta) {
+    if (i < 0) return;
+    held[i] = Math.max(0, held[i] + delta);
+    pads[i].classList.toggle("down", held[i] > 0);
+  }
+
+  function padAt(x, y) {
+    const el = document.elementFromPoint(x, y);
+    const pad = el && el.closest(".pad");
+    return pad ? Number(pad.dataset.i) : -1;
+  }
+
+  function slideTo(e, tap) {
+    const i = padAt(e.clientX, e.clientY);
+    const was = fingers.get(e.pointerId);
+    if (i === was) return;
+    fingers.set(e.pointerId, i);
+    press(was, -1);
+    press(i, 1);
+    if (i >= 0) hit(i, { x: e.clientX, y: e.clientY, tap });
+  }
+
+  function lift(e) {
+    if (!fingers.has(e.pointerId)) return;
+    press(fingers.get(e.pointerId), -1);
+    fingers.delete(e.pointerId);
+  }
+
+  padsEl.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault();
+    // Touch pointers stick to the element they land on, which would keep a sliding finger on its first pad.
+    if (e.target.hasPointerCapture && e.target.hasPointerCapture(e.pointerId)) {
+      e.target.releasePointerCapture(e.pointerId);
+    }
+    fingers.set(e.pointerId, -1);
+    slideTo(e, true);
+  });
+
+  document.addEventListener("pointermove", (e) => {
+    if (!fingers.has(e.pointerId)) return;
+    if (e.pointerType === "mouse" && e.buttons === 0) return lift(e); // released outside the window
+    const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+    for (const ev of events.length ? events : [e]) slideTo(ev, false);
+  });
+  document.addEventListener("pointerup", lift);
+  document.addEventListener("pointercancel", lift);
+
+  // Taps act on pointerdown; click only handles the keyboard, so mice don't double up.
+  const onKey = (fn) => (e) => { if (e.detail === 0) fn(); };
+  pads.forEach((pad, i) => pad.addEventListener("click", onKey(() => hit(i, { tap: true }))));
+
+  // Mashing a laptop keyboard plays too; neighboring keys land on neighboring pads.
+  document.addEventListener("keydown", (e) => {
+    if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+    if ((e.key === "Enter" || e.key === " ") && e.target.closest && e.target.closest("button")) return;
+    let n = 0;
+    for (const ch of e.code || e.key) n += ch.charCodeAt(0);
+    hit(n % PADS.length, { tap: true });
+  });
+
+  // ---------- instruments ----------
+  function feedback(btn) {
+    buzz(10);
+    if (motionEnabled()) {
+      btn.classList.remove("tapped");
+      void btn.offsetWidth;
+      btn.classList.add("tapped");
+    }
+  }
+
+  document.querySelectorAll(".tool").forEach((btn) => {
+    btn.addEventListener("animationend", (e) => {
+      if (e.animationName === "button-pulse") btn.classList.remove("tapped");
+    });
+  });
+
+  // Picking an instrument shows it off on a few pads right away: [pad, delay in ms].
+  const PREVIEW = { bells: [[0, 0], [2, 80], [3, 160], [5, 240]], drums: [[0, 0], [4, 200]] };
+
+  for (const btn of document.querySelectorAll(".tool[data-instrument]")) {
+    const pick = () => {
+      instrument = btn.dataset.instrument;
+      for (const b of document.querySelectorAll(".tool[data-instrument]")) {
+        b.setAttribute("aria-pressed", String(b === btn));
+      }
+      padsEl.dataset.instrument = instrument;
+      feedback(btn);
+      const preview = PREVIEW[instrument] || [[Math.floor(Math.random() * PADS.length), 0]];
+      for (const [i, ms] of preview) setTimeout(() => hit(i, { echo: true }), ms);
+    };
+    btn.addEventListener("pointerdown", pick);
+    btn.addEventListener("click", onKey(pick));
+  }
+
+  // ---------- play button ----------
+  // Sings back the child's latest little tune on the current instrument, lighting each pad in turn.
+  // Until there is one, it plays "Mary Had a Little Lamb", which happens to fit the pentatonic pads.
+  const MARY = [[2, 1], [1, 1], [0, 1], [1, 1], [2, 1], [2, 1], [2, 2], [1, 1], [1, 1], [1, 2],
+    [2, 1], [3, 1], [3, 2], [2, 1], [1, 1], [0, 1], [1, 1], [2, 1], [2, 1], [2, 1], [2, 1],
+    [1, 1], [1, 1], [2, 1], [1, 1], [0, 2]]; // [pad, beats]
+  let tune = [];   // notes since the last pause: { i, t }
+  let song = null; // the latest tune with at least two notes
+  let songTimers = [];
+
+  function remember(i, now) {
+    const last = tune[tune.length - 1];
+    if (!last || now - last.t > 3000) tune = [];
+    tune.push({ i, t: now });
+    if (tune.length > 32) tune.shift();
+    if (tune.length >= 2) song = tune;
+  }
+
+  function stopSong() {
+    songTimers.forEach(clearTimeout);
+    songTimers = [];
+    playBtn.classList.remove("playing");
+  }
+
+  function playSong() {
+    stopSong();
+    const notes = song
+      ? song.map((n, k) => [n.i, k ? Math.min(650, Math.max(80, n.t - song[k - 1].t)) : 0])
+      : MARY.map(([i], k) => [i, k ? MARY[k - 1][1] * 300 : 0]);
+    let at = 0;
+    for (const [i, gap] of notes) {
+      at += gap;
+      songTimers.push(setTimeout(() => hit(i, { echo: true }), at));
+    }
+    songTimers.push(setTimeout(() => {
+      stopSong();
+      if (!motionEnabled()) return;
+      const rect = playBtn.getBoundingClientRect();
+      for (let k = 0; k < 8; k++) {
+        fling(rect.left + rect.width / 2, rect.top + rect.height / 2, { text: k % 2 ? "♪" : "♫",
+          dx: rand(160), dy: -60 - Math.random() * 120, spin: rand(80), life: 1000 });
+      }
+    }, at + 450));
+    playBtn.classList.add("playing");
+  }
+
+  const startSong = () => {
+    feedback(playBtn);
+    playSong();
+  };
+  playBtn.addEventListener("pointerdown", startSong);
+  playBtn.addEventListener("click", onKey(startSong));
+
+  // ---------- sound ----------
+  // All synthesized with Web Audio, so there are no files to load.
+  let audio = null;
+  let bus, noiseBuf;
+  let live = 0;
+
+  // Browsers only allow sound after a tap, so this runs on every press and lift.
+  function startAudio() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    if (!audio) {
+      try {
+        audio = new AC();
+      } catch (_) { return false; }
+      // A soft limiter, so a whole palm of pads can't get loud.
+      bus = audio.createDynamicsCompressor();
+      bus.threshold.value = -16;
+      bus.knee.value = 12;
+      bus.ratio.value = 6;
+      bus.attack.value = 0.003;
+      bus.release.value = 0.2;
+      const master = audio.createGain();
+      master.gain.value = 0.8;
+      bus.connect(master).connect(audio.destination);
+
+      noiseBuf = audio.createBuffer(1, audio.sampleRate, audio.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (audio.state === "suspended") audio.resume().catch(() => {});
+    return true;
+  }
+
+  function sound(name, i) {
+    if (!startAudio() || live >= 24) return;
+    const v = { t: audio.currentTime + 0.005, out: audio.createGain(), end: 0 };
+    v.out.connect(bus);
+    INSTRUMENTS[name](v, i);
+    live++;
+    setTimeout(() => {
+      v.out.disconnect();
+      live--;
+    }, (v.end - audio.currentTime) * 1000 + 100);
+  }
+
+  // ---------- voices ----------
+  // Same notes as Colorifica's colors: a pentatonic scale, so any order of taps sounds like a tune.
+  const NOTES = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51, 1567.98, 1760];
+
+  // Glides an AudioParam through [seconds, value] points; values must stay above zero.
+  function shape(param, t, points) {
+    if (typeof points === "number") return param.setValueAtTime(points, t);
+    param.setValueAtTime(points[0][1], t + points[0][0]);
+    for (let k = 1; k < points.length; k++) {
+      param.exponentialRampToValueAtTime(points[k][1], t + points[k][0]);
+    }
+  }
+
+  // Envelopes: a struck sound that dies away, and a held one that swells and fades.
+  const strike = (vol, decay, attack = 0.004) => [[0, 0.0001], [attack, vol], [attack + decay, 0.0001]];
+  const swell = (vol, attack, len, release = 0.1) =>
+    [[0, 0.0001], [attack, vol], [len, vol * 0.8], [len + release, 0.0001]];
+
+  function osc(v, type, pitch, level, to = v.out, at = 0) {
+    const t = v.t + at;
+    const o = audio.createOscillator();
+    const g = audio.createGain();
+    o.type = type;
+    shape(o.frequency, t, pitch);
+    shape(g.gain, t, level);
+    o.connect(g).connect(to);
+    const end = t + level[level.length - 1][0];
+    o.start(t);
+    o.stop(end + 0.02);
+    v.end = Math.max(v.end, end);
+    return o;
+  }
+
+  function hiss(v, level, type, freq, q = 1, to = v.out, at = 0) {
+    const t = v.t + at;
+    const src = audio.createBufferSource();
+    const f = audio.createBiquadFilter();
+    const g = audio.createGain();
+    src.buffer = noiseBuf;
+    f.type = type;
+    f.Q.value = q;
+    shape(f.frequency, t, freq);
+    shape(g.gain, t, level);
+    src.connect(f).connect(g).connect(to);
+    const end = t + level[level.length - 1][0];
+    src.start(t, Math.random() * 0.4);
+    src.stop(end + 0.02);
+    v.end = Math.max(v.end, end);
+  }
+
+  function filter(v, type, freq, q = 1, at = 0, to = v.out) {
+    const f = audio.createBiquadFilter();
+    f.type = type;
+    f.Q.value = q;
+    shape(f.frequency, v.t + at, freq);
+    f.connect(to);
+    return f;
+  }
+
+  // Wiggles a param: vibrato on a pitch, or flutter on a volume.
+  function wobble(v, param, rate, depth, at, len) {
+    const t = v.t + at;
+    const lfo = audio.createOscillator();
+    const g = audio.createGain();
+    lfo.frequency.value = rate;
+    g.gain.value = depth;
+    lfo.connect(g).connect(param);
+    lfo.start(t);
+    lfo.stop(t + len);
+  }
+
+  function flutter(v, rate, depth, len, to) {
+    const g = audio.createGain();
+    g.connect(to);
+    wobble(v, g.gain, rate, depth, 0, len);
+    return g;
+  }
+
+  const tom = (f) => (v) => {
+    osc(v, "triangle", [[0, f * 1.6], [0.08, f]], strike(0.45, 0.4));
+    osc(v, "sine", [[0, f * 3], [0.05, f * 2]], strike(0.45, 0.16));
+    hiss(v, strike(0.2, 0.02, 0.001), "bandpass", 2500);
+  };
+
+  // Low to high, so the drum kit runs the same way as the notes.
+  const DRUMS = [
+    (v) => { // kick, with a click on top so small speakers still hear it
+      osc(v, "sine", [[0, 280], [0.1, 85]], strike(0.42, 0.3));
+      osc(v, "triangle", [[0, 900], [0.05, 180]], strike(0.45, 0.12));
+      hiss(v, strike(0.5, 0.03, 0.001), "bandpass", 2000);
+    },
+    tom(185),
+    tom(245),
+    tom(320),
+    (v) => { // snare
+      hiss(v, strike(0.8, 0.2), "highpass", 1200);
+      osc(v, "triangle", [[0, 280], [0.05, 190]], strike(0.4, 0.1));
+    },
+    (v) => { // clap: three quick slaps and a tail
+      hiss(v, [[0, 0.0001], [0.002, 2], [0.01, 0.24], [0.012, 2], [0.02, 0.24], [0.022, 2],
+        [0.032, 0.6], [0.22, 0.0001]], "bandpass", 1400, 1.5);
+    },
+    (v) => { // cowbell
+      const bell = filter(v, "bandpass", 850, 2.5);
+      const level = [[0, 0.0001], [0.003, 0.35], [0.05, 0.12], [0.4, 0.0001]];
+      osc(v, "square", 545, level, bell);
+      osc(v, "square", 815, level, bell);
+    },
+    (v) => { // woodblock
+      osc(v, "sine", [[0, 1300], [0.03, 1080]], strike(0.8, 0.12));
+      osc(v, "triangle", 2600, strike(0.25, 0.03));
+    },
+    (v) => { // shaker: chk-chk
+      for (const at of [0, 0.14]) {
+        hiss(v, [[0, 0.0001], [0.035, 0.75], [0.12, 0.0001]], "highpass", 5000, 1, v.out, at);
+      }
+    },
+    (v) => { // triangle: ting
+      osc(v, "sine", 2637, strike(0.18, 1.3, 0.002));
+      osc(v, "sine", 6865, strike(0.05, 0.7, 0.002));
+      osc(v, "sine", 9310, strike(0.03, 0.4, 0.002));
+    },
+  ];
+
+  // Cartoon animals, one per pad; k nudges the pitch so repeats don't sound robotic.
+  const ANIMALS = [
+    (v, k) => { // cow: mmm-ooo
+      const mouth = filter(v, "lowpass", [[0, 300], [0.3, 1000], [0.8, 650], [1.05, 300]], 4);
+      for (const d of [1, 1.007]) {
+        osc(v, "sawtooth", [[0, 110 * k * d], [0.3, 132 * k * d], [1.05, 98 * k * d]], swell(0.4, 0.15, 0.95, 0.15), mouth);
+      }
+    },
+    (v, k) => { // bee: bzzz, wandering like it's flying around
+      const wings = flutter(v, 24, 0.35, 0.95, filter(v, "lowpass", 1400));
+      for (const d of [1, 1.015]) {
+        osc(v, "sawtooth", [[0, 200 * k * d], [0.3, 245 * k * d], [0.6, 215 * k * d], [0.85, 235 * k * d]],
+          swell(0.25, 0.1, 0.75, 0.15), wings);
+      }
+    },
+    (v, k) => { // chick: peep peep peep
+      for (let n = 0; n < 3; n++) {
+        osc(v, "sine", [[0, 2500 * k], [0.04, 3100 * k], [0.08, 2800 * k]],
+          [[0, 0.0001], [0.01, 0.2], [0.06, 0.16], [0.09, 0.0001]], v.out, n * 0.13);
+      }
+    },
+    (v, k) => { // frog: rib-bit, two runs of croaky pulses
+      const throat = filter(v, "bandpass", [[0, 600], [0.15, 600], [0.17, 1100]], 1);
+      for (let n = 0; n < 9; n++) {
+        const bit = n >= 4;
+        osc(v, "sawtooth", (bit ? 175 : 140) * k, strike(1.9, 0.02, 0.003), throat,
+          bit ? 0.17 + (n - 4) * 0.026 : n * 0.026);
+      }
+    },
+    (v, k) => { // duck: quack quack
+      for (const at of [0, 0.24]) {
+        const bill = filter(v, "bandpass", [[0, 800], [0.04, 1500], [0.18, 1100]], 3, at);
+        osc(v, "sawtooth", [[0, 360 * k], [0.18, 270 * k]], [[0, 0.0001], [0.012, 1.1], [0.12, 0.8], [0.19, 0.0001]], bill, at);
+      }
+    },
+    (v, k) => { // owl: hoo, hooo
+      for (const [at, len] of [[0, 0.22], [0.34, 0.5]]) {
+        osc(v, "sine", [[0, 390 * k], [0.06, 420 * k], [len, 380 * k]], swell(0.34, 0.06, len - 0.08, 0.08), v.out, at);
+        hiss(v, swell(0.03, 0.05, len - 0.08, 0.08), "lowpass", 1200, 1, v.out, at);
+      }
+    },
+    (v, k) => { // sheep: baa, with a bleating wobble
+      const bleat = flutter(v, 8, 0.4, 0.8, filter(v, "bandpass", [[0, 500], [0.06, 1100], [0.7, 900]], 1.6));
+      const o = osc(v, "sawtooth", [[0, 300 * k], [0.7, 255 * k]], swell(0.65, 0.05, 0.6, 0.12), bleat);
+      wobble(v, o.frequency, 8, 22, 0.05, 0.75);
+    },
+    (v, k) => { // pig: oink oink
+      for (const at of [0, 0.24]) {
+        const snout = filter(v, "bandpass", [[0, 600], [0.06, 1000], [0.16, 700]], 2.5, at);
+        osc(v, "sawtooth", [[0, 170 * k], [0.05, 230 * k], [0.16, 150 * k]], [[0, 0.0001], [0.02, 1], [0.12, 0.7], [0.17, 0.0001]], snout, at);
+        hiss(v, strike(0.12, 0.12, 0.02), "lowpass", 700, 1, v.out, at);
+      }
+    },
+    (v, k) => { // dog: woof woof
+      for (const at of [0, 0.27]) {
+        const mouth = filter(v, "bandpass", [[0, 900], [0.05, 650], [0.15, 450]], 2, at);
+        osc(v, "sawtooth", [[0, 420 * k], [0.03, 360 * k], [0.15, 230 * k]], [[0, 0.0001], [0.01, 0.9], [0.06, 0.55], [0.16, 0.0001]], mouth, at);
+        hiss(v, strike(0.3, 0.07, 0.006), "bandpass", 1200, 1, mouth, at);
+      }
+    },
+    (v, k) => { // cat: mee-ow
+      const mouth = filter(v, "bandpass", [[0, 700], [0.12, 2200], [0.32, 1400], [0.6, 750]], 2.5);
+      const o = osc(v, "sawtooth", [[0, 500 * k], [0.15, 720 * k], [0.32, 760 * k], [0.62, 470 * k]], swell(0.55, 0.07, 0.5, 0.14), mouth);
+      wobble(v, o.frequency, 6, 8, 0.1, 0.55);
+    },
+  ];
+
+  const INSTRUMENTS = {
+    bells(v, i) { // music-box bells: a pure tone with a bright little strike on top
+      const f = NOTES[i];
+      osc(v, "sine", f, strike(0.3, 1.4, 0.003));
+      osc(v, "sine", f * 2, strike(0.08, 0.5, 0.003));
+      osc(v, "sine", f * 3.98, strike(0.04, 0.12, 0.002));
+    },
+    drums(v, i) { DRUMS[i](v); },
+    animals(v, i) { ANIMALS[i](v, 0.96 + Math.random() * 0.08); },
+  };
+
+  // ---------- toddler-proofing ----------
+  document.addEventListener("pointerdown", startAudio, true);
+  document.addEventListener("pointerup", startAudio, true);
+  document.addEventListener("keydown", startAudio, true);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) return keepAwake();
+    stopSong();
+    fingers.clear();
+    held.fill(0);
+    pads.forEach((pad) => pad.classList.remove("down"));
+    if (audio) audio.suspend().catch(() => {});
+  });
+
+  // Some browsers (Silk on Fire tablets) ignore touch-action, so cancelling the raw touch
+  // events is what actually stops pinches and swipes from hijacking little fingers.
+  const noGesture = (e) => { if (e.cancelable) e.preventDefault(); };
+  document.addEventListener("touchstart", noGesture, { passive: false });
+  document.addEventListener("touchmove", noGesture, { passive: false });
+  document.addEventListener("contextmenu", (e) => e.preventDefault());
+  document.addEventListener("gesturestart", (e) => e.preventDefault());
+  document.addEventListener("dblclick", (e) => e.preventDefault());
+
+  let wakeLock = null;
+  async function keepAwake() {
+    if (!("wakeLock" in navigator) || wakeLock || document.visibilityState !== "visible") return;
+    try {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => { wakeLock = null; });
+    } catch (_) { /* not allowed here; the screen may dim */ }
+  }
+
+  // In a browser tab on a touch device, go fullscreen so the browser bar is out of reach.
+  // Skipped when launched from the home screen (already fullscreen) and while fingers are
+  // down, since the resize would cut them off mid-slide.
+  const isTouch = window.matchMedia("(pointer: coarse)").matches;
+  const installed = window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches;
+  function goFullscreen() {
+    if (!isTouch || installed || fingers.size > 0) return;
+    if (document.fullscreenElement || document.webkitFullscreenElement) return;
+    const req = root.requestFullscreen || root.webkitRequestFullscreen;
+    if (!req) return;
+    try {
+      const r = req.call(root);
+      if (r && r.catch) r.catch(() => {});
+    } catch (_) { /* unsupported here */ }
+  }
+
+  document.addEventListener("pointerup", () => {
+    keepAwake();
+    goFullscreen();
+  });
+  keepAwake();
+})();
+</script>
+</body>
 </html>
