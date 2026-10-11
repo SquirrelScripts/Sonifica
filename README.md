@@ -12,7 +12,7 @@ Big, bright sound pads for a two-year-old. Colorifica's musical sibling: no word
 
 It's one static `index.html` with no build step and no dependencies. Every sound is synthesized with Web Audio: no recordings, no files to load.
 
-Reduced-motion device settings turn off the animations and vibration. Flying notes and sparkles also stay off on devices reporting 2 GB of memory or fewer, or two CPU cores or fewer.
+Reduced-motion device settings turn off the animations and vibration. Flying notes and sparkles also stay off on devices reporting 1 GB of memory or less, or two CPU cores or fewer.
 
 For optional opt-outs without extra on-screen controls, add any of these attributes to the opening `<html>` tag in `index.html`: `data-haptics="off"`, `data-effects="off"` (all animations, a calmer low-stimulation mode), or `data-particles="off"` (flying notes and sparkles only).
 

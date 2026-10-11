@@ -278,7 +278,8 @@
   const effects = document.getElementById("effects");
   const playBtn = document.getElementById("play");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const lowCapability = (navigator.deviceMemory && navigator.deviceMemory <= 2) ||
+  // Fire tablets report 2 GB and handle the effects fine, so only 1 GB or less counts as low-end.
+  const lowCapability = (navigator.deviceMemory && navigator.deviceMemory <= 1) ||
     (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2);
 
   // Colorifica's paint colors, in the same order, so each color plays the same note in both apps.
